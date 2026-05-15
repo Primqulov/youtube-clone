@@ -6,8 +6,13 @@ import '../pages/video_player_page.dart';
 
 class VideoCard extends StatelessWidget {
   final Video video;
+  final List<Video> recommendedVideos;
 
-  const VideoCard({super.key, required this.video});
+  const VideoCard({
+    super.key,
+    required this.video,
+    this.recommendedVideos = const [],
+  });
 
   String _formatViewCount(String count) {
     final number = int.tryParse(count) ?? 0;
@@ -50,7 +55,10 @@ class VideoCard extends StatelessWidget {
       onTap: () {
         Navigator.of(context).push(
           MaterialPageRoute(
-            builder: (_) => VideoPlayerPage(video: video),
+            builder: (_) => VideoPlayerPage(
+              video: video,
+              recommendedVideos: recommendedVideos,
+            ),
           ),
         );
       },
@@ -69,7 +77,7 @@ class VideoCard extends StatelessWidget {
                     child: CachedNetworkImage(
                       imageUrl: video.thumbnailUrl,
                       fit: BoxFit.cover,
-                      placeholder: (_, __) => Container(
+                      placeholder: (_, _) => Container(
                         color: AppTheme.surfaceCard,
                         child: const Center(
                           child: Icon(
@@ -79,7 +87,7 @@ class VideoCard extends StatelessWidget {
                           ),
                         ),
                       ),
-                      errorWidget: (_, __, ___) => Container(
+                      errorWidget: (_, _, _) => Container(
                         color: AppTheme.surfaceCard,
                         child: const Center(
                           child: Icon(
@@ -98,7 +106,10 @@ class VideoCard extends StatelessWidget {
                     bottom: 8,
                     right: 8,
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: 3,
+                      ),
                       decoration: BoxDecoration(
                         color: Colors.black.withValues(alpha: 0.85),
                         borderRadius: BorderRadius.circular(4),
@@ -173,7 +184,7 @@ class VideoCard extends StatelessWidget {
                             if (video.viewCount != '0')
                               '${_formatViewCount(video.viewCount)} ko\'rish',
                             _timeAgo(video.publishedAt),
-                          ].join(' • '),
+                          ].join(' - '),
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(

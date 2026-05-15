@@ -1,6 +1,8 @@
 import 'package:get_it/get_it.dart';
 import 'package:http/http.dart' as http;
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'core/network/api_client.dart';
+import 'core/network/network_info.dart';
 import 'features/youtube/data/datasources/youtube_remote_datasource.dart';
 import 'features/youtube/data/repositories/youtube_repository_impl.dart';
 import 'features/youtube/domain/repositories/youtube_repository.dart';
@@ -19,6 +21,7 @@ Future<void> init() async {
       searchVideos: sl(),
       getVideoDetails: sl(),
       getChannelDetails: sl(),
+      networkInfo: sl(),
     ),
   );
 
@@ -34,11 +37,11 @@ Future<void> init() async {
   );
 
   // Data Sources
-  sl.registerLazySingleton(
-    () => YoutubeRemoteDatasource(apiClient: sl()),
-  );
+  sl.registerLazySingleton(() => YoutubeRemoteDatasource(apiClient: sl()));
 
   // Core
+  sl.registerLazySingleton<NetworkInfo>(() => NetworkInfoImpl(sl()));
   sl.registerLazySingleton(() => ApiClient(client: sl()));
   sl.registerLazySingleton(() => http.Client());
+  sl.registerLazySingleton(() => Connectivity());
 }

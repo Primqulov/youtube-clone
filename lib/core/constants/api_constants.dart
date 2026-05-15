@@ -4,11 +4,12 @@ class ApiConstants {
   static const String apiKey = 'AIzaSyCSdeBsc-c8BXU0hivTLOz8kt8epGRgJr0';
   static const String baseUrl = 'https://www.googleapis.com/youtube/v3';
 
-  static const int maxResults = 20;
+  static const int maxResults = 50;
 
   static String searchUrl(String query, {String? pageToken}) {
+    final encodedQuery = Uri.encodeQueryComponent(query);
     final buffer = StringBuffer(
-      '$baseUrl/search?part=snippet&q=$query&type=video&maxResults=$maxResults&key=$apiKey',
+      '$baseUrl/search?part=snippet&q=$encodedQuery&type=video&videoEmbeddable=true&videoSyndicated=true&maxResults=$maxResults&key=$apiKey',
     );
     if (pageToken != null) {
       buffer.write('&pageToken=$pageToken');
@@ -34,7 +35,10 @@ class ApiConstants {
     return '$baseUrl/channels?part=snippet,statistics&id=$channelId&key=$apiKey';
   }
 
-  static String videoThumbnailUrl(String videoId, {String quality = 'maxresdefault'}) {
+  static String videoThumbnailUrl(
+    String videoId, {
+    String quality = 'maxresdefault',
+  }) {
     return 'https://img.youtube.com/vi/$videoId/$quality.jpg';
   }
 }

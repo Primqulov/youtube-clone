@@ -16,7 +16,8 @@ class HomePage extends StatefulWidget {
   State<HomePage> createState() => _HomePageState();
 }
 
-class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin {
+class _HomePageState extends State<HomePage>
+    with SingleTickerProviderStateMixin {
   late final AnimationController _fadeController;
   late final Animation<double> _fadeAnimation;
   int _selectedCategoryIndex = 0;
@@ -65,14 +66,37 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
   Widget build(BuildContext context) {
     return Scaffold(
       body: SafeArea(
-        child: FadeTransition(
-          opacity: _fadeAnimation,
-          child: Column(
-            children: [
-              _buildHeader(),
-              _buildCategoryChips(),
-              Expanded(child: _buildBody()),
-            ],
+        child: BlocListener<YoutubeBloc, YoutubeState>(
+          listener: (context, state) {
+            if (state is YoutubeError && state.message.contains('Internet')) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Row(
+                    children: [
+                      const Icon(Icons.wifi_off, color: Colors.white, size: 20),
+                      const SizedBox(width: 12),
+                      Text(state.message),
+                    ],
+                  ),
+                  backgroundColor: AppTheme.surfaceElevated,
+                  duration: const Duration(seconds: 3),
+                  behavior: SnackBarBehavior.floating,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+              );
+            }
+          },
+          child: FadeTransition(
+            opacity: _fadeAnimation,
+            child: Column(
+              children: [
+                _buildHeader(),
+                _buildCategoryChips(),
+                Expanded(child: _buildBody()),
+              ],
+            ),
           ),
         ),
       ),
@@ -98,7 +122,11 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                   ),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: const Icon(Icons.play_arrow, color: Colors.white, size: 20),
+                child: const Icon(
+                  Icons.play_arrow,
+                  color: Colors.white,
+                  size: 20,
+                ),
               ),
               const SizedBox(width: 8),
               const Text(
@@ -120,10 +148,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   gradient: LinearGradient(
-                    colors: [
-                      Colors.purple.shade400,
-                      Colors.blue.shade400,
-                    ],
+                    colors: [Colors.purple.shade400, Colors.blue.shade400],
                   ),
                 ),
                 child: const Center(
@@ -179,12 +204,19 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 250),
                 curve: Curves.easeInOut,
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 8,
+                ),
                 decoration: BoxDecoration(
-                  color: isSelected ? AppTheme.textPrimary : AppTheme.surfaceElevated,
+                  color: isSelected
+                      ? AppTheme.textPrimary
+                      : AppTheme.surfaceElevated,
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(
-                    color: isSelected ? Colors.transparent : AppTheme.dividerColor,
+                    color: isSelected
+                        ? Colors.transparent
+                        : AppTheme.dividerColor,
                     width: 0.5,
                   ),
                 ),
@@ -192,9 +224,13 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                   child: Text(
                     _categories[index],
                     style: TextStyle(
-                      color: isSelected ? AppTheme.surfaceDark : AppTheme.textPrimary,
+                      color: isSelected
+                          ? AppTheme.surfaceDark
+                          : AppTheme.textPrimary,
                       fontSize: 13,
-                      fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                      fontWeight: isSelected
+                          ? FontWeight.w600
+                          : FontWeight.w500,
                     ),
                   ),
                 ),
@@ -221,7 +257,11 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
           if (state.videos.isEmpty) {
             return _buildEmptyView(state.isSearchResult);
           }
-          return _buildVideoList(state.videos, state.isSearchResult, state.searchQuery);
+          return _buildVideoList(
+            state.videos,
+            state.isSearchResult,
+            state.searchQuery,
+          );
         }
 
         return const ShimmerLoading();
@@ -257,7 +297,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                 ),
               );
             },
-            child: VideoCard(video: videos[index]),
+            child: VideoCard(video: videos[index], recommendedVideos: videos),
           );
         },
       ),
@@ -295,29 +335,36 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
             ),
             const SizedBox(height: 8),
             Text(
-              message,
+              message.contains('Internet')
+                  ? 'Internet ulanishi tiklanganda ma\'lumotlar avtomatik yangilanadi'
+                  : message,
               textAlign: TextAlign.center,
               style: const TextStyle(
                 color: AppTheme.textSecondary,
                 fontSize: 14,
               ),
             ),
-            const SizedBox(height: 24),
-            ElevatedButton.icon(
-              onPressed: () {
-                context.read<YoutubeBloc>().add(const LoadTrendingVideos());
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.primaryColor,
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(20),
+            if (!message.contains('Internet')) ...[
+              const SizedBox(height: 24),
+              ElevatedButton.icon(
+                onPressed: () {
+                  context.read<YoutubeBloc>().add(const LoadTrendingVideos());
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.primaryColor,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 12,
+                  ),
                 ),
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                icon: const Icon(Icons.refresh, size: 18),
+                label: const Text('Qayta urinish'),
               ),
-              icon: const Icon(Icons.refresh, size: 18),
-              label: const Text('Qayta urinish'),
-            ),
+            ],
           ],
         ),
       ),
