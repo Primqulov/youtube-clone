@@ -1,9 +1,27 @@
-import '../entities/video.dart';
+import '../../../../core/utils/result.dart';
 import '../entities/channel.dart';
+import '../entities/comment.dart';
+import '../entities/paginated_videos.dart';
+import '../entities/video.dart';
 
 abstract class YoutubeRepository {
-  Future<List<Video>> getTrendingVideos({String? pageToken});
-  Future<List<Video>> searchVideos(String query, {String? pageToken});
-  Future<Video> getVideoDetails(String videoId);
-  Future<Channel> getChannelDetails(String channelId);
+  Future<Result<PaginatedVideos>> getTrendingVideos({String? pageToken});
+  Future<Result<PaginatedVideos>> searchVideos(
+    String query, {
+    String? pageToken,
+  });
+  Future<Result<Video>> getVideoDetails(String videoId);
+  Future<Result<Channel>> getChannelDetails(String channelId);
+  Future<Result<PaginatedVideos>> getChannelVideos(
+    String channelId, {
+    String? pageToken,
+  });
+  Future<Result<PaginatedComments>> getVideoComments(
+    String videoId, {
+    String? pageToken,
+  });
+  Future<Result<PaginatedVideos>> getShortsFeed({
+    required String query,
+    String? pageToken,
+  });
 }

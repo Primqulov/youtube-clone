@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+
 import '../../../../core/theme/app_theme.dart';
-import '../../domain/entities/video.dart';
 import '../bloc/youtube_bloc.dart';
 import '../bloc/youtube_event.dart';
 import '../bloc/youtube_state.dart';
-import '../widgets/video_card.dart';
 import '../widgets/search_bar_widget.dart';
 import '../widgets/shimmer_loading.dart';
+import '../widgets/video_card.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -18,8 +18,11 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage>
     with SingleTickerProviderStateMixin {
+  static const double _loadMoreThreshold = 400;
+
   late final AnimationController _fadeController;
   late final Animation<double> _fadeAnimation;
+  final ScrollController _scrollController = ScrollController();
   int _selectedCategoryIndex = 0;
 
   final List<String> _categories = [
@@ -44,13 +47,25 @@ class _HomePageState extends State<HomePage>
       curve: Curves.easeOut,
     );
     _fadeController.forward();
+    _scrollController.addListener(_onScroll);
     context.read<YoutubeBloc>().add(const LoadTrendingVideos());
   }
 
   @override
   void dispose() {
     _fadeController.dispose();
+    _scrollController
+      ..removeListener(_onScroll)
+      ..dispose();
     super.dispose();
+  }
+
+  void _onScroll() {
+    if (!_scrollController.hasClients) return;
+    final position = _scrollController.position;
+    if (position.pixels >= position.maxScrollExtent - _loadMoreThreshold) {
+      context.read<YoutubeBloc>().add(const LoadMoreVideos());
+    }
   }
 
   void _onCategoryTap(int index) {
@@ -68,7 +83,7 @@ class _HomePageState extends State<HomePage>
       body: SafeArea(
         child: BlocListener<YoutubeBloc, YoutubeState>(
           listener: (context, state) {
-            if (state is YoutubeError && state.message.contains('Internet')) {
+            if (state is YoutubeError && state.isNetworkError) {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                   content: Row(
@@ -108,7 +123,6 @@ class _HomePageState extends State<HomePage>
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
       child: Column(
         children: [
-          // Logo row
           Row(
             children: [
               Container(
@@ -165,7 +179,6 @@ class _HomePageState extends State<HomePage>
             ],
           ),
           const SizedBox(height: 12),
-          // Search bar
           SearchBarWidget(
             onSearch: (query) {
               setState(() => _selectedCategoryIndex = -1);
@@ -245,48 +258,43 @@ class _HomePageState extends State<HomePage>
   Widget _buildBody() {
     return BlocBuilder<YoutubeBloc, YoutubeState>(
       builder: (context, state) {
-        if (state is YoutubeLoading) {
-          return const ShimmerLoading();
-        }
-
-        if (state is YoutubeError) {
-          return _buildErrorView(state.message);
-        }
-
+        if (state is YoutubeLoading) return const ShimmerLoading();
+        if (state is YoutubeError) return _buildErrorView(state);
         if (state is YoutubeLoaded) {
-          if (state.videos.isEmpty) {
-            return _buildEmptyView(state.isSearchResult);
-          }
-          return _buildVideoList(
-            state.videos,
-            state.isSearchResult,
-            state.searchQuery,
-          );
+          if (state.videos.isEmpty) return _buildEmptyView(state.isSearchResult);
+          return _buildVideoList(state);
         }
-
         return const ShimmerLoading();
       },
     );
   }
 
-  Widget _buildVideoList(List<Video> videos, bool isSearch, String query) {
+  Widget _buildVideoList(YoutubeLoaded state) {
+    final itemCount = state.videos.length + 1;
+
     return RefreshIndicator(
       color: AppTheme.primaryColor,
       backgroundColor: AppTheme.surfaceCard,
       onRefresh: () async {
-        if (isSearch) {
-          context.read<YoutubeBloc>().add(SearchVideosEvent(query));
+        if (state.isSearchResult) {
+          context.read<YoutubeBloc>().add(
+            SearchVideosEvent(state.searchQuery),
+          );
         } else {
           context.read<YoutubeBloc>().add(const LoadTrendingVideos());
         }
       },
       child: ListView.builder(
+        controller: _scrollController,
         padding: const EdgeInsets.fromLTRB(12, 12, 12, 24),
-        itemCount: videos.length,
+        itemCount: itemCount,
         itemBuilder: (context, index) {
+          if (index == state.videos.length) {
+            return _buildFooter(state);
+          }
           return TweenAnimationBuilder<double>(
             tween: Tween(begin: 0.0, end: 1.0),
-            duration: Duration(milliseconds: 400 + (index * 80)),
+            duration: Duration(milliseconds: 400 + (index * 80).clamp(0, 1200)),
             curve: Curves.easeOut,
             builder: (context, value, child) {
               return Opacity(
@@ -297,14 +305,47 @@ class _HomePageState extends State<HomePage>
                 ),
               );
             },
-            child: VideoCard(video: videos[index], recommendedVideos: videos),
+            child: VideoCard(
+              video: state.videos[index],
+              recommendedVideos: state.videos,
+            ),
           );
         },
       ),
     );
   }
 
-  Widget _buildErrorView(String message) {
+  Widget _buildFooter(YoutubeLoaded state) {
+    if (state.isLoadingMore) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 24),
+        child: Center(
+          child: SizedBox(
+            width: 28,
+            height: 28,
+            child: CircularProgressIndicator(
+              color: AppTheme.primaryColor,
+              strokeWidth: 2.5,
+            ),
+          ),
+        ),
+      );
+    }
+    if (state.hasReachedEnd) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 24),
+        child: Center(
+          child: Text(
+            'Oxiri',
+            style: TextStyle(color: AppTheme.textTertiary, fontSize: 13),
+          ),
+        ),
+      );
+    }
+    return const SizedBox.shrink();
+  }
+
+  Widget _buildErrorView(YoutubeError state) {
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(32),
@@ -335,16 +376,16 @@ class _HomePageState extends State<HomePage>
             ),
             const SizedBox(height: 8),
             Text(
-              message.contains('Internet')
+              state.isNetworkError
                   ? 'Internet ulanishi tiklanganda ma\'lumotlar avtomatik yangilanadi'
-                  : message,
+                  : state.message,
               textAlign: TextAlign.center,
               style: const TextStyle(
                 color: AppTheme.textSecondary,
                 fontSize: 14,
               ),
             ),
-            if (!message.contains('Internet')) ...[
+            if (!state.isNetworkError) ...[
               const SizedBox(height: 24),
               ElevatedButton.icon(
                 onPressed: () {

@@ -1,4 +1,5 @@
-import '../entities/video.dart';
+import '../../../../core/utils/result.dart';
+import '../entities/paginated_videos.dart';
 import '../repositories/youtube_repository.dart';
 
 class SearchVideos {
@@ -6,7 +7,6 @@ class SearchVideos {
 
   SearchVideos(this.repository);
 
-  Future<List<Video>> call(String query, {String? pageToken}) {
-    return repository.searchVideos(query, pageToken: pageToken);
-  }
+  Future<Result<PaginatedVideos>> call(String query, {String? pageToken}) =>
+      repository.searchVideos(query, pageToken: pageToken);
 }

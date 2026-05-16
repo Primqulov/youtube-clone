@@ -1,4 +1,5 @@
-import '../entities/video.dart';
+import '../../../../core/utils/result.dart';
+import '../entities/paginated_videos.dart';
 import '../repositories/youtube_repository.dart';
 
 class GetTrendingVideos {
@@ -6,7 +7,6 @@ class GetTrendingVideos {
 
   GetTrendingVideos(this.repository);
 
-  Future<List<Video>> call({String? pageToken}) {
-    return repository.getTrendingVideos(pageToken: pageToken);
-  }
+  Future<Result<PaginatedVideos>> call({String? pageToken}) =>
+      repository.getTrendingVideos(pageToken: pageToken);
 }

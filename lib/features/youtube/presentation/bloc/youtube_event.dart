@@ -23,11 +23,6 @@ class ClearSearch extends YoutubeEvent {
   const ClearSearch();
 }
 
-class LoadVideoDetails extends YoutubeEvent {
-  final String videoId;
-  final String channelId;
-  const LoadVideoDetails({required this.videoId, required this.channelId});
-
-  @override
-  List<Object?> get props => [videoId, channelId];
+class LoadMoreVideos extends YoutubeEvent {
+  const LoadMoreVideos();
 }

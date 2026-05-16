@@ -1,5 +1,7 @@
-import '../entities/video.dart';
+import '../../../../core/utils/result.dart';
 import '../entities/channel.dart';
+import '../entities/paginated_videos.dart';
+import '../entities/video.dart';
 import '../repositories/youtube_repository.dart';
 
 class GetVideoDetails {
@@ -7,9 +9,8 @@ class GetVideoDetails {
 
   GetVideoDetails(this.repository);
 
-  Future<Video> call(String videoId) {
-    return repository.getVideoDetails(videoId);
-  }
+  Future<Result<Video>> call(String videoId) =>
+      repository.getVideoDetails(videoId);
 }
 
 class GetChannelDetails {
@@ -17,7 +18,17 @@ class GetChannelDetails {
 
   GetChannelDetails(this.repository);
 
-  Future<Channel> call(String channelId) {
-    return repository.getChannelDetails(channelId);
-  }
+  Future<Result<Channel>> call(String channelId) =>
+      repository.getChannelDetails(channelId);
+}
+
+class GetChannelVideos {
+  final YoutubeRepository repository;
+
+  GetChannelVideos(this.repository);
+
+  Future<Result<PaginatedVideos>> call(
+    String channelId, {
+    String? pageToken,
+  }) => repository.getChannelVideos(channelId, pageToken: pageToken);
 }

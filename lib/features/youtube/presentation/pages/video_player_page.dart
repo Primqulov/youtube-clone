@@ -1,15 +1,22 @@
 import 'dart:math';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:webview_flutter/webview_flutter.dart';
-import 'package:webview_flutter_android/webview_flutter_android.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:youtube_player_flutter/youtube_player_flutter.dart';
 
+import '../../../../core/navigation/route_observer.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/utils/formatters.dart';
+import '../../../../injection_container.dart' as di;
+import '../../domain/entities/channel.dart';
 import '../../domain/entities/video.dart';
+import '../bloc/video_detail_cubit.dart';
+import '../widgets/channel_avatar.dart';
+import '../widgets/comments_sheet.dart';
 import '../widgets/video_card.dart';
+import 'channel_page.dart';
 
-class VideoPlayerPage extends StatefulWidget {
+class VideoPlayerPage extends StatelessWidget {
   final Video video;
   final List<Video> recommendedVideos;
 
@@ -20,196 +27,235 @@ class VideoPlayerPage extends StatefulWidget {
   });
 
   @override
-  State<VideoPlayerPage> createState() => _VideoPlayerPageState();
+  Widget build(BuildContext context) {
+    return BlocProvider(
+      create: (_) => di.sl<VideoDetailCubit>(param1: video)..load(),
+      child: _VideoPlayerView(
+        initialVideo: video,
+        recommendedVideos: recommendedVideos,
+      ),
+    );
+  }
 }
 
-class _VideoPlayerPageState extends State<VideoPlayerPage> {
-  late final WebViewController _controller;
+class _VideoPlayerView extends StatefulWidget {
+  final Video initialVideo;
+  final List<Video> recommendedVideos;
+
+  const _VideoPlayerView({
+    required this.initialVideo,
+    required this.recommendedVideos,
+  });
+
+  @override
+  State<_VideoPlayerView> createState() => _VideoPlayerViewState();
+}
+
+class _VideoPlayerViewState extends State<_VideoPlayerView> with RouteAware {
+  late final YoutubePlayerController _controller;
   late final List<Video> _recommendedVideos;
-  bool _isLoading = true;
-  bool _isFullscreen = false;
-  double _loadingProgress = 0;
 
   @override
   void initState() {
     super.initState();
     _recommendedVideos = _buildRecommendations();
-    _controller = WebViewController()
-      ..setJavaScriptMode(JavaScriptMode.unrestricted)
-      ..setBackgroundColor(Colors.black)
-      ..setUserAgent(
-        'Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 '
-        '(KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36',
-      )
-      ..setNavigationDelegate(
-        NavigationDelegate(
-          onProgress: (progress) {
-            if (mounted) {
-              setState(() => _loadingProgress = progress / 100);
-            }
-          },
-          onPageFinished: (_) {
-            if (mounted) {
-              setState(() => _isLoading = false);
-            }
-          },
-        ),
-      );
-
-    if (_controller.platform is AndroidWebViewController) {
-      (_controller.platform as AndroidWebViewController)
-          .setMediaPlaybackRequiresUserGesture(false);
-    }
-
-    _controller.loadRequest(
-      Uri.parse(_buildPlayerUrl()),
-      headers: const {
-        'Referer': 'https://com.example.exsampleflutter/',
-        'Referrer-Policy': 'strict-origin-when-cross-origin',
-      },
+    _controller = YoutubePlayerController(
+      initialVideoId: widget.initialVideo.id,
+      flags: const YoutubePlayerFlags(
+        autoPlay: true,
+        mute: false,
+        enableCaption: true,
+        captionLanguage: 'en',
+        showLiveFullscreenButton: true,
+      ),
     );
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final route = ModalRoute.of(context);
+    if (route is PageRoute) {
+      appRouteObserver.subscribe(this, route);
+    }
+  }
+
+  @override
+  void didPushNext() {
+    if (!_controller.value.isFullScreen) {
+      _controller.pause();
+    }
+  }
+
+  @override
   void dispose() {
-    SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
-    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+    appRouteObserver.unsubscribe(this);
+    _controller.dispose();
     super.dispose();
   }
 
-  Future<void> _enterFullscreen() async {
-    await SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
-    await SystemChrome.setPreferredOrientations([
-      DeviceOrientation.landscapeLeft,
-      DeviceOrientation.landscapeRight,
-    ]);
-
-    if (mounted) {
-      setState(() => _isFullscreen = true);
-    }
-  }
-
-  Future<void> _exitFullscreen() async {
-    await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
-    await SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
-
-    if (mounted) {
-      setState(() => _isFullscreen = false);
-    }
-  }
-
-  String _formatCount(String count) {
-    final number = int.tryParse(count) ?? 0;
-    if (number >= 1000000) return '${(number / 1000000).toStringAsFixed(1)}M';
-    if (number >= 1000) return '${(number / 1000).toStringAsFixed(1)}K';
-    return count;
-  }
-
   List<Video> _buildRecommendations() {
-    final seenVideoIds = <String>{widget.video.id};
+    final seen = <String>{widget.initialVideo.id};
     final videos = <Video>[];
-
     for (final video in widget.recommendedVideos) {
-      if (video.id.isEmpty || !seenVideoIds.add(video.id)) continue;
+      if (video.id.isEmpty || !seen.add(video.id)) continue;
       videos.add(video);
     }
-
     videos.shuffle(Random());
     return videos;
   }
 
-  String _buildPlayerUrl() {
-    final videoId = Uri.encodeComponent(widget.video.id);
-
-    return 'https://www.youtube.com/embed/$videoId'
-        '?autoplay=0'
-        '&playsinline=1'
-        '&controls=1'
-        '&rel=0'
-        '&modestbranding=1'
-        '&iv_load_policy=3';
+  @override
+  Widget build(BuildContext context) {
+    return YoutubePlayerBuilder(
+      player: YoutubePlayer(
+        controller: _controller,
+        aspectRatio: 16 / 9,
+        progressColors: const ProgressBarColors(
+          playedColor: AppTheme.primaryColor,
+          handleColor: AppTheme.accentColor,
+        ),
+        progressIndicatorColor: AppTheme.primaryColor,
+      ),
+      builder: (context, player) {
+        return Scaffold(
+          backgroundColor: AppTheme.surfaceDark,
+          body: SafeArea(
+            child: Column(
+              children: [
+                Stack(
+                  children: [
+                    player,
+                    Positioned(
+                      top: 4,
+                      left: 4,
+                      child: IconButton(
+                        onPressed: () => Navigator.pop(context),
+                        icon: const Icon(
+                          Icons.keyboard_arrow_down,
+                          color: Colors.white,
+                          size: 32,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                Expanded(
+                  child: BlocBuilder<VideoDetailCubit, VideoDetailState>(
+                    builder: (context, state) {
+                      final video = state.video;
+                      return CustomScrollView(
+                        slivers: [
+                          SliverToBoxAdapter(
+                            child: _VideoMeta(
+                              video: video,
+                              channel: state.channel,
+                              isLoading: state.isLoading,
+                            ),
+                          ),
+                          if (_recommendedVideos.isNotEmpty)
+                            SliverList(
+                              delegate: SliverChildBuilderDelegate(
+                                (context, index) => Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                  ),
+                                  child: VideoCard(
+                                    video: _recommendedVideos[index],
+                                    recommendedVideos:
+                                        widget.recommendedVideos,
+                                  ),
+                                ),
+                                childCount: _recommendedVideos.length,
+                              ),
+                            ),
+                        ],
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
   }
+}
+
+class _VideoMeta extends StatelessWidget {
+  final Video video;
+  final Channel? channel;
+  final bool isLoading;
+
+  const _VideoMeta({
+    required this.video,
+    required this.channel,
+    required this.isLoading,
+  });
 
   @override
   Widget build(BuildContext context) {
-    if (_isFullscreen) {
-      return PopScope(
-        canPop: false,
-        onPopInvokedWithResult: (didPop, _) {
-          if (!didPop) {
-            _exitFullscreen();
-          }
-        },
-        child: Scaffold(
-          backgroundColor: Colors.black,
-          body: _FullscreenVideoPlayer(
-            controller: _controller,
-            isLoading: _isLoading,
-            loadingProgress: _loadingProgress,
-            onExit: _exitFullscreen,
+    final hasViews = video.viewCount != '0';
+    final subscriberLabel = channel != null
+        ? '${Formatters.compactCount(channel!.subscriberCount)} obunachi'
+        : (isLoading ? 'Yuklanmoqda...' : '');
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+          child: Text(
+            video.title,
+            style: const TextStyle(
+              color: AppTheme.textPrimary,
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
+              height: 1.3,
+            ),
           ),
         ),
-      );
-    }
-
-    return Scaffold(
-      backgroundColor: AppTheme.surfaceDark,
-      body: SafeArea(
-        child: CustomScrollView(
-          slivers: [
-            SliverToBoxAdapter(
-              child: _VideoPlayerHeader(
-                controller: _controller,
-                isLoading: _isLoading,
-                loadingProgress: _loadingProgress,
-                onBack: () => Navigator.pop(context),
-                onFullscreen: _enterFullscreen,
-              ),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Text(
+            [
+              if (hasViews)
+                '${Formatters.compactCount(video.viewCount)} ko\'rish',
+              Formatters.timeAgo(video.publishedAt),
+            ].join(' - '),
+            style: const TextStyle(
+              color: AppTheme.textSecondary,
+              fontSize: 13,
             ),
-
-            SliverToBoxAdapter(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-                    child: Text(
-                      widget.video.title,
-                      style: const TextStyle(
-                        color: AppTheme.textPrimary,
-                        fontSize: 18,
-                        fontWeight: FontWeight.w700,
-                        height: 1.3,
-                      ),
-                    ),
-                  ),
-
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: Text(
-                      '${_formatCount(widget.video.viewCount)} views - 2 days ago',
-                      style: const TextStyle(
-                        color: AppTheme.textSecondary,
-                        fontSize: 13,
-                      ),
-                    ),
-                  ),
-
-                  const SizedBox(height: 16),
-
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
+          ),
+        ),
+        const SizedBox(height: 16),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Row(
+            children: [
+              Expanded(
+                child: InkWell(
+                  onTap: video.channelId.isEmpty
+                      ? null
+                      : () => Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => ChannelPage(
+                                channelId: video.channelId,
+                                channelTitle: video.channelTitle,
+                                channelAvatarUrl: video.channelAvatarUrl,
+                              ),
+                            ),
+                          ),
+                  borderRadius: BorderRadius.circular(8),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4),
                     child: Row(
                       children: [
-                        CircleAvatar(
-                          radius: 18,
-                          backgroundColor: AppTheme.surfaceElevated,
-                          child: Text(
-                            widget.video.channelTitle.isNotEmpty
-                                ? widget.video.channelTitle[0].toUpperCase()
-                                : '?',
-                            style: const TextStyle(color: Colors.white),
-                          ),
+                        ChannelAvatar(
+                          avatarUrl: video.channelAvatarUrl,
+                          channelTitle: video.channelTitle,
                         ),
                         const SizedBox(width: 12),
                         Expanded(
@@ -217,16 +263,16 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                widget.video.channelTitle,
+                                video.channelTitle,
                                 style: const TextStyle(
                                   color: AppTheme.textPrimary,
                                   fontSize: 15,
                                   fontWeight: FontWeight.w600,
                                 ),
                               ),
-                              const Text(
-                                '1.5M subscribers',
-                                style: TextStyle(
+                              Text(
+                                subscriberLabel,
+                                style: const TextStyle(
                                   color: AppTheme.textSecondary,
                                   fontSize: 12,
                                 ),
@@ -234,156 +280,127 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
                             ],
                           ),
                         ),
-                        ElevatedButton(
-                          onPressed: () {},
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.white,
-                            foregroundColor: Colors.black,
-                            elevation: 0,
-                            padding: const EdgeInsets.symmetric(horizontal: 16),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                          ),
-                          child: const Text(
-                            'Subscribe',
-                            style: TextStyle(fontWeight: FontWeight.w700),
-                          ),
-                        ),
                       ],
                     ),
                   ),
-
-                  const SizedBox(height: 16),
-
-                  SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                    child: Row(
-                      children: [
-                        _buildActionPill(
-                          child: Row(
-                            children: [
-                              const Icon(Icons.thumb_up_outlined, size: 20),
-                              const SizedBox(width: 8),
-                              const Text('120K'),
-                              const SizedBox(width: 12),
-                              Container(
-                                width: 1,
-                                height: 20,
-                                color: AppTheme.dividerColor,
-                              ),
-                              const SizedBox(width: 12),
-                              const Icon(Icons.thumb_down_outlined, size: 20),
-                            ],
-                          ),
-                        ),
-                        _buildActionPill(
-                          icon: Icons.share_outlined,
-                          label: 'Share',
-                        ),
-                        _buildActionPill(
-                          icon: Icons.graphic_eq_outlined,
-                          label: 'Remix',
-                        ),
-                        _buildActionPill(
-                          icon: Icons.download_outlined,
-                          label: 'Download',
-                        ),
-                        _buildActionPill(
-                          icon: Icons.cut_outlined,
-                          label: 'Clip',
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  const SizedBox(height: 16),
-
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: AppTheme.surfaceCard,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              const Text(
-                                'Comments',
-                                style: TextStyle(
-                                  color: AppTheme.textPrimary,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              const Text(
-                                '1.2K',
-                                style: TextStyle(color: AppTheme.textSecondary),
-                              ),
-                              const Spacer(),
-                              const Icon(Icons.unfold_more, size: 18),
-                            ],
-                          ),
-                          const SizedBox(height: 12),
-                          Row(
-                            children: [
-                              const CircleAvatar(
-                                radius: 12,
-                                backgroundColor: Colors.blue,
-                              ),
-                              const SizedBox(width: 8),
-                              const Expanded(
-                                child: Text(
-                                  'This video is amazing! Keep up the great work.',
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(
-                                    color: AppTheme.textPrimary,
-                                    fontSize: 13,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-
-                  const SizedBox(height: 24),
-                ],
+                ),
               ),
-            ),
-
-            if (_recommendedVideos.isNotEmpty)
-              SliverList(
-                delegate: SliverChildBuilderDelegate((context, index) {
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                    child: VideoCard(
-                      video: _recommendedVideos[index],
-                      recommendedVideos: widget.recommendedVideos,
-                    ),
-                  );
-                }, childCount: _recommendedVideos.length),
+              ElevatedButton(
+                onPressed: () {},
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.white,
+                  foregroundColor: Colors.black,
+                  elevation: 0,
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                ),
+                child: const Text(
+                  'Subscribe',
+                  style: TextStyle(fontWeight: FontWeight.w700),
+                ),
               ),
-          ],
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+        _ActionPills(likeCount: video.likeCount),
+        const SizedBox(height: 16),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          child: _CommentsTile(videoId: video.id),
+        ),
+        const SizedBox(height: 24),
+      ],
+    );
+  }
+}
+
+class _CommentsTile extends StatelessWidget {
+  final String videoId;
+  const _CommentsTile({required this.videoId});
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: AppTheme.surfaceElevated,
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: videoId.isEmpty
+            ? null
+            : () => showCommentsSheet(context, videoId: videoId),
+        child: const Padding(
+          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          child: Row(
+            children: [
+              Icon(
+                Icons.chat_bubble_outline,
+                color: AppTheme.textPrimary,
+                size: 20,
+              ),
+              SizedBox(width: 12),
+              Text(
+                'Izohlar',
+                style: TextStyle(
+                  color: AppTheme.textPrimary,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              Spacer(),
+              Icon(
+                Icons.chevron_right,
+                color: AppTheme.textSecondary,
+                size: 20,
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
+}
 
-  Widget _buildActionPill({
-    IconData? icon,
-    Widget? customIcon,
-    String? label,
-    Widget? child,
-  }) {
+class _ActionPills extends StatelessWidget {
+  final String likeCount;
+  const _ActionPills({required this.likeCount});
+
+  @override
+  Widget build(BuildContext context) {
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      child: Row(
+        children: [
+          _pill(
+            child: Row(
+              children: [
+                const Icon(Icons.thumb_up_outlined, size: 20),
+                const SizedBox(width: 8),
+                Text(Formatters.compactCount(likeCount)),
+                const SizedBox(width: 12),
+                Container(
+                  width: 1,
+                  height: 20,
+                  color: AppTheme.dividerColor,
+                ),
+                const SizedBox(width: 12),
+                const Icon(Icons.thumb_down_outlined, size: 20),
+              ],
+            ),
+          ),
+          _pill(icon: Icons.share_outlined, label: 'Share'),
+          _pill(icon: Icons.graphic_eq_outlined, label: 'Remix'),
+          _pill(icon: Icons.download_outlined, label: 'Download'),
+          _pill(icon: Icons.cut_outlined, label: 'Clip'),
+        ],
+      ),
+    );
+  }
+
+  Widget _pill({IconData? icon, String? label, Widget? child}) {
     return Container(
       margin: const EdgeInsets.only(right: 8),
       padding: EdgeInsets.symmetric(
@@ -394,11 +411,10 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
         color: AppTheme.surfaceElevated,
         borderRadius: BorderRadius.circular(20),
       ),
-      child:
-          child ??
+      child: child ??
           Row(
             children: [
-              customIcon ?? Icon(icon, size: 20),
+              Icon(icon, size: 20),
               if (label != null) ...[
                 const SizedBox(width: 8),
                 Text(
@@ -411,162 +427,6 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
               ],
             ],
           ),
-    );
-  }
-}
-
-class _VideoPlayerHeader extends StatelessWidget {
-  final WebViewController controller;
-  final bool isLoading;
-  final double loadingProgress;
-  final VoidCallback onBack;
-  final VoidCallback onFullscreen;
-
-  const _VideoPlayerHeader({
-    required this.controller,
-    required this.isLoading,
-    required this.loadingProgress,
-    required this.onBack,
-    required this.onFullscreen,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return AspectRatio(
-      aspectRatio: 16 / 9,
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          ColoredBox(
-            color: Colors.black,
-            child: WebViewWidget(controller: controller),
-          ),
-          if (isLoading)
-            Positioned(
-              top: 0,
-              left: 0,
-              right: 0,
-              child: LinearProgressIndicator(
-                value: loadingProgress,
-                backgroundColor: Colors.transparent,
-                valueColor: const AlwaysStoppedAnimation<Color>(
-                  AppTheme.primaryColor,
-                ),
-                minHeight: 2,
-              ),
-            ),
-          Positioned(
-            top: 4,
-            left: 4,
-            child: IconButton(
-              onPressed: onBack,
-              icon: const Icon(
-                Icons.keyboard_arrow_down,
-                color: Colors.white,
-                size: 32,
-              ),
-            ),
-          ),
-          Positioned(
-            right: 8,
-            bottom: 8,
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                color: Colors.black.withValues(alpha: 0.55),
-                shape: BoxShape.circle,
-              ),
-              child: IconButton(
-                tooltip: 'Fullscreen',
-                onPressed: onFullscreen,
-                icon: const Icon(
-                  Icons.fullscreen,
-                  color: Colors.white,
-                  size: 28,
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _FullscreenVideoPlayer extends StatelessWidget {
-  final WebViewController controller;
-  final bool isLoading;
-  final double loadingProgress;
-  final VoidCallback onExit;
-
-  const _FullscreenVideoPlayer({
-    required this.controller,
-    required this.isLoading,
-    required this.loadingProgress,
-    required this.onExit,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        ColoredBox(
-          color: Colors.black,
-          child: WebViewWidget(controller: controller),
-        ),
-        if (isLoading)
-          Positioned(
-            top: 0,
-            left: 0,
-            right: 0,
-            child: LinearProgressIndicator(
-              value: loadingProgress,
-              backgroundColor: Colors.transparent,
-              valueColor: const AlwaysStoppedAnimation<Color>(
-                AppTheme.primaryColor,
-              ),
-              minHeight: 2,
-            ),
-          ),
-        Positioned(
-          top: 12,
-          left: 12,
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              color: Colors.black.withValues(alpha: 0.55),
-              shape: BoxShape.circle,
-            ),
-            child: IconButton(
-              tooltip: 'Back',
-              onPressed: onExit,
-              icon: const Icon(
-                Icons.keyboard_arrow_down,
-                color: Colors.white,
-                size: 32,
-              ),
-            ),
-          ),
-        ),
-        Positioned(
-          right: 12,
-          bottom: 12,
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              color: Colors.black.withValues(alpha: 0.55),
-              shape: BoxShape.circle,
-            ),
-            child: IconButton(
-              tooltip: 'Exit fullscreen',
-              onPressed: onExit,
-              icon: const Icon(
-                Icons.fullscreen_exit,
-                color: Colors.white,
-                size: 30,
-              ),
-            ),
-          ),
-        ),
-      ],
     );
   }
 }

@@ -27,6 +27,36 @@ class Video extends Equatable {
     this.channelAvatarUrl = '',
   });
 
+  Video copyWith({
+    String? viewCount,
+    String? likeCount,
+    String? duration,
+    String? channelAvatarUrl,
+    String? thumbnailUrl,
+  }) {
+    return Video(
+      id: id,
+      title: title,
+      description: description,
+      thumbnailUrl: thumbnailUrl ?? this.thumbnailUrl,
+      channelId: channelId,
+      channelTitle: channelTitle,
+      publishedAt: publishedAt,
+      viewCount: viewCount ?? this.viewCount,
+      likeCount: likeCount ?? this.likeCount,
+      duration: duration ?? this.duration,
+      channelAvatarUrl: channelAvatarUrl ?? this.channelAvatarUrl,
+    );
+  }
+
   @override
-  List<Object?> get props => [id, title, channelId];
+  List<Object?> get props => [
+    id,
+    title,
+    channelId,
+    viewCount,
+    duration,
+    thumbnailUrl,
+    channelAvatarUrl,
+  ];
 }

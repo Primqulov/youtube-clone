@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
+import 'app/main_shell.dart';
+import 'core/navigation/route_observer.dart';
 import 'core/theme/app_theme.dart';
-import 'features/youtube/presentation/bloc/youtube_bloc.dart';
-import 'features/youtube/presentation/pages/home_page.dart';
 import 'injection_container.dart' as di;
 
 void main() async {
@@ -32,10 +31,8 @@ class YoutubeApp extends StatelessWidget {
       title: 'YouTube',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.darkTheme,
-      home: BlocProvider(
-        create: (_) => di.sl<YoutubeBloc>(),
-        child: const HomePage(),
-      ),
+      navigatorObservers: [appRouteObserver],
+      home: const MainShell(),
     );
   }
 }
