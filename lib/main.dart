@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'app/main_shell.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'features/splash/presentation/pages/splash_page.dart';
+import 'features/youtube/presentation/bloc/youtube_bloc.dart';
 import 'core/navigation/route_observer.dart';
 import 'core/theme/app_theme.dart';
 import 'injection_container.dart' as di;
@@ -27,12 +29,15 @@ class YoutubeApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'YouTube',
-      debugShowCheckedModeBanner: false,
-      theme: AppTheme.darkTheme,
-      navigatorObservers: [appRouteObserver],
-      home: const MainShell(),
+    return BlocProvider(
+      create: (_) => di.sl<YoutubeBloc>(),
+      child: MaterialApp(
+        title: 'YouTube',
+        debugShowCheckedModeBanner: false,
+        theme: AppTheme.darkTheme,
+        navigatorObservers: [appRouteObserver],
+        home: const SplashPage(),
+      ),
     );
   }
 }

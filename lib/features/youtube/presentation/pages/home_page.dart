@@ -126,20 +126,25 @@ class _HomePageState extends State<HomePage>
           Row(
             children: [
               Container(
-                width: 32,
-                height: 32,
+                width: 48,
+                height: 34,
                 decoration: BoxDecoration(
                   gradient: const LinearGradient(
-                    colors: [Color(0xFFFF0000), Color(0xFFCC0000)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
+                    colors: [Color(0xFFFF0000), Color(0xFFE60000)],
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
                   ),
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(9.5),
                 ),
-                child: const Icon(
-                  Icons.play_arrow,
-                  color: Colors.white,
-                  size: 20,
+                child: const Center(
+                  child: Padding(
+                    padding: EdgeInsets.only(left: 1.5),
+                    child: Icon(
+                      Icons.play_arrow_rounded,
+                      color: Colors.white,
+                      size: 22,
+                    ),
+                  ),
                 ),
               ),
               const SizedBox(width: 8),

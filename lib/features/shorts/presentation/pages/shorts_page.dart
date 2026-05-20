@@ -148,10 +148,18 @@ class _ShortsFeedState extends State<_ShortsFeed> with RouteAware {
   }
 
   void _syncWindow() {
+    if (!mounted) return;
+    final selectedTab = MainShellScope.selectedTabOf(context);
+    final isVisible =
+        selectedTab == null || selectedTab == MainShellScope.shortsTabIndex;
     _pool.updateWindow(
       orderedIds: widget.videos.map((v) => v.id).toList(),
       currentIndex: _currentIndex,
     );
+
+    if (!isVisible || _routePaused) {
+      _pool.pauseAll();
+    }
   }
 
   void _onPageChanged(int index) {
