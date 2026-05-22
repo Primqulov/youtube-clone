@@ -1,4 +1,5 @@
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_theme.dart';
@@ -18,6 +19,9 @@ class ChannelAvatar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (avatarUrl.isNotEmpty) {
+      if (kDebugMode) {
+        print("hello");
+      }
       return ClipOval(
         child: CachedNetworkImage(
           imageUrl: avatarUrl,
