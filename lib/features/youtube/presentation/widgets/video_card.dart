@@ -1,6 +1,7 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
+import '../../../../core/constants/app_strings.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/utils/formatters.dart';
 import '../../domain/entities/video.dart';
@@ -144,7 +145,7 @@ class _MetaInfo extends StatelessWidget {
     final parts = <String>[
       video.channelTitle,
       if (video.viewCount != '0')
-        '${Formatters.compactCount(video.viewCount)} ko\'rish',
+        '${Formatters.compactCount(video.viewCount)} ${AppStrings.views}',
       Formatters.timeAgo(video.publishedAt),
     ];
 
@@ -164,7 +165,7 @@ class _MetaInfo extends StatelessWidget {
         ),
         const SizedBox(height: 4),
         Text(
-          parts.join(' - '),
+          parts.join(AppStrings.separatorDash),
           maxLines: 2,
           overflow: TextOverflow.ellipsis,
           style: const TextStyle(

@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../app/main_shell.dart';
+import '../../../../core/constants/app_dimensions.dart';
+import '../../../../core/constants/app_strings.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../youtube/presentation/bloc/youtube_bloc.dart';
 import '../../../youtube/presentation/bloc/youtube_event.dart';
@@ -118,10 +120,10 @@ class _SplashPageState extends State<SplashPage>
                   YoutubeLogoWidget(width: 90),
                   SizedBox(height: 25),
                   Text(
-                    'YouTube',
+                    AppStrings.appTitle,
                     style: TextStyle(
                       color: Colors.white,
-                      fontSize: 32,
+                      fontSize: AppDimensions.fontSizeTitle,
                       fontWeight: FontWeight.w800,
                       letterSpacing: -1.2,
                       fontFamily: 'Roboto',

@@ -2,6 +2,8 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../../../core/constants/app_dimensions.dart';
+import '../../../../core/constants/app_strings.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/utils/formatters.dart';
 import '../../../../injection_container.dart' as di;
@@ -59,7 +61,7 @@ class _CommentsSheet extends StatelessWidget {
                     if (state.isDisabled) {
                       return const _EmptyState(
                         icon: Icons.comments_disabled_outlined,
-                        message: 'Bu videoda izohlar o\'chirilgan',
+                        message: AppStrings.commentsDisabled,
                       );
                     }
                     if (state.errorMessage != null && state.comments.isEmpty) {
@@ -71,7 +73,7 @@ class _CommentsSheet extends StatelessWidget {
                     if (state.comments.isEmpty) {
                       return const _EmptyState(
                         icon: Icons.chat_bubble_outline,
-                        message: 'Hozircha izohlar yo\'q',
+                        message: AppStrings.commentsEmpty,
                       );
                     }
                     return _CommentsList(
@@ -116,10 +118,10 @@ class _Header extends StatelessWidget {
       child: Row(
         children: [
           const Text(
-            'Izohlar',
+            AppStrings.commentsTitle,
             style: TextStyle(
               color: AppTheme.textPrimary,
-              fontSize: 16,
+              fontSize: AppDimensions.fontSizeXl,
               fontWeight: FontWeight.w700,
             ),
           ),
@@ -267,10 +269,10 @@ class _CommentTile extends StatelessWidget {
                     if (comment.replyCount > 0) ...[
                       const SizedBox(width: 20),
                       Text(
-                        '${comment.replyCount} javob',
+                        '${comment.replyCount} ${AppStrings.commentReply}',
                         style: const TextStyle(
                           color: AppTheme.accentColor,
-                          fontSize: 12,
+                          fontSize: AppDimensions.fontSizeSm,
                           fontWeight: FontWeight.w600,
                         ),
                       ),

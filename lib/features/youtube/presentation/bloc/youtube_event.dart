@@ -8,7 +8,11 @@ abstract class YoutubeEvent extends Equatable {
 }
 
 class LoadTrendingVideos extends YoutubeEvent {
-  const LoadTrendingVideos();
+  final bool forceRefresh;
+  const LoadTrendingVideos({this.forceRefresh = false});
+
+  @override
+  List<Object?> get props => [forceRefresh];
 }
 
 class SearchVideosEvent extends YoutubeEvent {

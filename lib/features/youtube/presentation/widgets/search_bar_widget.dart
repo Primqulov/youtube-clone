@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+
+import '../../../../core/constants/app_dimensions.dart';
+import '../../../../core/constants/app_strings.dart';
 import '../../../../core/theme/app_theme.dart';
 
 class SearchBarWidget extends StatefulWidget {
@@ -35,10 +38,10 @@ class _SearchBarWidgetState extends State<SearchBarWidget> {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 44,
+      height: AppDimensions.searchBarHeight,
       decoration: BoxDecoration(
         color: AppTheme.surfaceElevated,
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: BorderRadius.circular(AppDimensions.radiusFull),
         border: Border.all(color: AppTheme.dividerColor, width: 0.5),
       ),
       child: Row(
@@ -59,7 +62,7 @@ class _SearchBarWidgetState extends State<SearchBarWidget> {
                 fontWeight: FontWeight.w400,
               ),
               decoration: const InputDecoration(
-                hintText: 'Videolarni qidirish...',
+                hintText: AppStrings.searchHint,
                 border: InputBorder.none,
                 enabledBorder: InputBorder.none,
                 focusedBorder: InputBorder.none,

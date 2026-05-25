@@ -2,6 +2,8 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:get_it/get_it.dart';
 import 'package:http/http.dart' as http;
 
+import 'core/cache/home_video_cache.dart';
+import 'core/cache/search_history_cache.dart';
 import 'core/network/api_client.dart';
 import 'core/network/network_info.dart';
 import 'features/youtube/data/datasources/youtube_remote_datasource.dart';
@@ -29,6 +31,7 @@ Future<void> init() async {
       getTrendingVideos: sl(),
       searchVideos: sl(),
       networkInfo: sl(),
+      cache: sl(),
     ),
   );
   sl.registerFactoryParam<VideoDetailCubit, Video, void>(
@@ -76,4 +79,9 @@ Future<void> init() async {
   sl.registerLazySingleton(() => ApiClient(client: sl()));
   sl.registerLazySingleton(() => http.Client());
   sl.registerLazySingleton(() => Connectivity());
+  sl.registerLazySingleton(() => HomeVideoCache());
+  sl.registerLazySingleton(() => SearchHistoryCache());
+
+  // SearchHistoryCache ni ishga tushirish (Hive box ochish)
+  await sl<SearchHistoryCache>().init();
 }

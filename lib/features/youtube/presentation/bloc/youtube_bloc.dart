@@ -4,6 +4,7 @@ import 'dart:math';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../../../core/cache/home_video_cache.dart';
 import '../../../../core/error/failures.dart';
 import '../../../../core/network/network_info.dart';
 import '../../../../core/utils/result.dart';
@@ -38,11 +39,15 @@ class YoutubeBloc extends Bloc<YoutubeEvent, YoutubeState> {
   StreamSubscription<List<ConnectivityResult>>? _connectivitySubscription;
   YoutubeEvent? _lastEvent;
 
+  final HomeVideoCache _cache;
+
   YoutubeBloc({
     required this.getTrendingVideos,
     required this.searchVideos,
     required this.networkInfo,
-  }) : super(const YoutubeInitial()) {
+    HomeVideoCache? cache,
+  })  : _cache = cache ?? HomeVideoCache(),
+        super(const YoutubeInitial()) {
     on<LoadTrendingVideos>(_onLoadTrending);
     on<SearchVideosEvent>(_onSearch);
     on<ClearSearch>(_onClearSearch);
@@ -69,13 +74,45 @@ class YoutubeBloc extends Bloc<YoutubeEvent, YoutubeState> {
     Emitter<YoutubeState> emit,
   ) async {
     _lastEvent = event;
-    emit(const YoutubeLoading());
 
+    // Cache dan ma'lumotlarni tekshirish (query=null = home)
+    if (event.forceRefresh) {
+      _cache.remove(null);
+    }
+
+    final cachedVideos = _cache.getVideos(null);
+    if (cachedVideos != null && cachedVideos.isNotEmpty) {
+      if (_cache.isFresh(null) && !event.forceRefresh) {
+        emit(
+          YoutubeLoaded(
+            videos: cachedVideos,
+            activeQuery: _cache.lastQuery,
+            isSearchResult: false,
+          ),
+        );
+        return;
+      } else {
+        // Stale cache yoki forceRefresh — show cached first then refresh
+        emit(
+          YoutubeLoaded(
+            videos: cachedVideos,
+            activeQuery: _cache.lastQuery,
+            isSearchResult: false,
+          ),
+        );
+      }
+    } else {
+      emit(const YoutubeLoading());
+    }
+
+    // Yangi ma'lumotlarni yuklash
     final topic = _homeTopics[_random.nextInt(_homeTopics.length)];
     final searchResult = await searchVideos(topic);
 
     if (searchResult is Success<PaginatedVideos> &&
         searchResult.data.videos.isNotEmpty) {
+      _cache.save(searchResult.data.videos, query: topic);
+      _cache.save(searchResult.data.videos, query: null);
       emit(_toLoadedState(searchResult.data, activeQuery: topic));
       return;
     }
@@ -83,9 +120,13 @@ class YoutubeBloc extends Bloc<YoutubeEvent, YoutubeState> {
     final trendingResult = await getTrendingVideos();
     switch (trendingResult) {
       case Success(:final data):
+        _cache.save(data.videos, query: null);
         emit(_toLoadedState(data, activeQuery: null));
       case Failed(:final failure):
-        emit(_failureToState(failure));
+        if (!_cache.hasData) {
+          emit(_failureToState(failure));
+        }
+      // Agar cache bo'lsa, error ni ko'rsatmaymiz, cached ma'lumot qoladi
     }
   }
 
@@ -95,11 +136,39 @@ class YoutubeBloc extends Bloc<YoutubeEvent, YoutubeState> {
   ) async {
     if (event.query.trim().isEmpty) return;
     _lastEvent = event;
-    emit(const YoutubeLoading());
+
+    // Cache dan tekshirish — har bir kategoriya alohida cache da saqlanadi
+    final cachedVideos = _cache.getVideos(event.query);
+    if (cachedVideos != null && cachedVideos.isNotEmpty) {
+      if (_cache.isFresh(event.query)) {
+        emit(
+          YoutubeLoaded(
+            videos: cachedVideos,
+            activeQuery: event.query,
+            isSearchResult: true,
+            searchQuery: event.query,
+          ),
+        );
+        return;
+      } else {
+        // Stale cache — show cached first then refresh
+        emit(
+          YoutubeLoaded(
+            videos: cachedVideos,
+            activeQuery: event.query,
+            isSearchResult: true,
+            searchQuery: event.query,
+          ),
+        );
+      }
+    } else {
+      emit(const YoutubeLoading());
+    }
 
     final result = await searchVideos(event.query);
     switch (result) {
       case Success(:final data):
+        _cache.save(data.videos, query: event.query);
         emit(
           _toLoadedState(
             data,
@@ -109,7 +178,10 @@ class YoutubeBloc extends Bloc<YoutubeEvent, YoutubeState> {
           ),
         );
       case Failed(:final failure):
-        emit(_failureToState(failure));
+        if (_cache.getVideos(event.query) == null) {
+          emit(_failureToState(failure));
+        }
+      // Agar cache bo'lsa, error ni ko'rsatmaymiz
     }
   }
 

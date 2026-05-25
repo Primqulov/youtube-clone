@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../../../core/constants/app_dimensions.dart';
+import '../../../../core/constants/app_strings.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/utils/formatters.dart';
 import '../../../../injection_container.dart' as di;
@@ -111,7 +113,7 @@ class _ChannelViewState extends State<_ChannelView> {
                     child: Row(
                       children: [
                         Text(
-                          'Videolar',
+                          AppStrings.channelVideos,
                           style: TextStyle(
                             color: AppTheme.textPrimary,
                             fontSize: 16,
@@ -176,10 +178,10 @@ class _ChannelHeader extends StatelessWidget {
     final avatarUrl = channel?.thumbnailUrl ?? '';
     final title = channel?.title ?? '';
     final subscribers = channel != null
-        ? '${Formatters.compactCount(channel.subscriberCount)} obunachi'
-        : (state.isLoading ? 'Yuklanmoqda...' : '');
+        ? '${Formatters.compactCount(channel.subscriberCount)} ${AppStrings.subscriber}'
+        : (state.isLoading ? AppStrings.loading : '');
     final videoCount = channel != null
-        ? '${Formatters.compactCount(channel.videoCount)} video'
+        ? '${Formatters.compactCount(channel.videoCount)}${AppStrings.videoLabel}'
         : '';
     final description = channel?.description ?? '';
 
@@ -213,7 +215,7 @@ class _ChannelHeader extends StatelessWidget {
                       [
                         if (subscribers.isNotEmpty) subscribers,
                         if (videoCount.isNotEmpty) videoCount,
-                      ].join(' • '),
+                      ].join(AppStrings.separatorBullet),
                       style: const TextStyle(
                         color: AppTheme.textSecondary,
                         fontSize: 13,
@@ -252,9 +254,9 @@ class _ChannelHeader extends StatelessWidget {
                 ),
               ),
               child: const Text(
-                'Subscribe',
+                AppStrings.subscribeButton,
                 style: TextStyle(
-                  fontSize: 14,
+                  fontSize: AppDimensions.fontSizeBase,
                   fontWeight: FontWeight.w700,
                 ),
               ),
@@ -292,8 +294,8 @@ class _Footer extends StatelessWidget {
         padding: EdgeInsets.symmetric(vertical: 24),
         child: Center(
           child: Text(
-            'Oxiri',
-            style: TextStyle(color: AppTheme.textTertiary, fontSize: 13),
+            AppStrings.endOfList,
+            style: TextStyle(color: AppTheme.textTertiary, fontSize: AppDimensions.fontSizeMd),
           ),
         ),
       );
