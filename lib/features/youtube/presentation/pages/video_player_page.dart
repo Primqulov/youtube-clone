@@ -2,8 +2,9 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:youtube_player_flutter/youtube_player_flutter.dart';
 
+import '../../../../core/constants/app_dimensions.dart';
+import '../../../../core/constants/app_strings.dart';
 import '../../../../core/navigation/route_observer.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/utils/formatters.dart';
@@ -13,6 +14,7 @@ import '../../domain/entities/video.dart';
 import '../bloc/video_detail_cubit.dart';
 import '../widgets/channel_avatar.dart';
 import '../widgets/comments_sheet.dart';
+import '../widgets/native_video_player.dart';
 import '../widgets/video_card.dart';
 import 'channel_page.dart';
 
@@ -52,23 +54,13 @@ class _VideoPlayerView extends StatefulWidget {
 }
 
 class _VideoPlayerViewState extends State<_VideoPlayerView> with RouteAware {
-  late final YoutubePlayerController _controller;
   late final List<Video> _recommendedVideos;
+  final GlobalKey<NativeVideoPlayerState> _playerKey = GlobalKey();
 
   @override
   void initState() {
     super.initState();
     _recommendedVideos = _buildRecommendations();
-    _controller = YoutubePlayerController(
-      initialVideoId: widget.initialVideo.id,
-      flags: const YoutubePlayerFlags(
-        autoPlay: true,
-        mute: false,
-        enableCaption: true,
-        captionLanguage: 'en',
-        showLiveFullscreenButton: true,
-      ),
-    );
   }
 
   @override
@@ -82,15 +74,19 @@ class _VideoPlayerViewState extends State<_VideoPlayerView> with RouteAware {
 
   @override
   void didPushNext() {
-    if (!_controller.value.isFullScreen) {
-      _controller.pause();
-    }
+    // Boshqa sahifaga o'tganda videoni pauza qilish
+    _playerKey.currentState?.pause();
+  }
+
+  @override
+  void didPopNext() {
+    // Qaytib kelganda videoni davom ettirish
+    _playerKey.currentState?.play();
   }
 
   @override
   void dispose() {
     appRouteObserver.unsubscribe(this);
-    _controller.dispose();
     super.dispose();
   }
 
@@ -107,78 +103,54 @@ class _VideoPlayerViewState extends State<_VideoPlayerView> with RouteAware {
 
   @override
   Widget build(BuildContext context) {
-    return YoutubePlayerBuilder(
-      player: YoutubePlayer(
-        controller: _controller,
-        aspectRatio: 16 / 9,
-        progressColors: const ProgressBarColors(
-          playedColor: AppTheme.primaryColor,
-          handleColor: AppTheme.accentColor,
-        ),
-        progressIndicatorColor: AppTheme.primaryColor,
-      ),
-      builder: (context, player) {
-        return Scaffold(
-          backgroundColor: AppTheme.surfaceDark,
-          body: SafeArea(
-            child: Column(
-              children: [
-                Stack(
-                  children: [
-                    player,
-                    Positioned(
-                      top: 4,
-                      left: 4,
-                      child: IconButton(
-                        onPressed: () => Navigator.pop(context),
-                        icon: const Icon(
-                          Icons.keyboard_arrow_down,
-                          color: Colors.white,
-                          size: 32,
+    return Scaffold(
+      backgroundColor: AppTheme.surfaceDark,
+      body: SafeArea(
+        child: Column(
+          children: [
+            NativeVideoPlayer(
+              key: _playerKey,
+              videoId: widget.initialVideo.id,
+              autoPlay: true,
+              onBack: () => Navigator.pop(context),
+            ),
+            Expanded(
+              child: BlocBuilder<VideoDetailCubit, VideoDetailState>(
+                builder: (context, state) {
+                  final video = state.video;
+                  return CustomScrollView(
+                    slivers: [
+                      SliverToBoxAdapter(
+                        child: _VideoMeta(
+                          video: video,
+                          channel: state.channel,
+                          isLoading: state.isLoading,
                         ),
                       ),
-                    ),
-                  ],
-                ),
-                Expanded(
-                  child: BlocBuilder<VideoDetailCubit, VideoDetailState>(
-                    builder: (context, state) {
-                      final video = state.video;
-                      return CustomScrollView(
-                        slivers: [
-                          SliverToBoxAdapter(
-                            child: _VideoMeta(
-                              video: video,
-                              channel: state.channel,
-                              isLoading: state.isLoading,
-                            ),
-                          ),
-                          if (_recommendedVideos.isNotEmpty)
-                            SliverList(
-                              delegate: SliverChildBuilderDelegate(
-                                (context, index) => Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 12,
-                                  ),
-                                  child: VideoCard(
-                                    video: _recommendedVideos[index],
-                                    recommendedVideos:
-                                        widget.recommendedVideos,
-                                  ),
-                                ),
-                                childCount: _recommendedVideos.length,
+                      if (_recommendedVideos.isNotEmpty)
+                        SliverList(
+                          delegate: SliverChildBuilderDelegate(
+                            (context, index) => Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                              ),
+                              child: VideoCard(
+                                video: _recommendedVideos[index],
+                                recommendedVideos:
+                                    widget.recommendedVideos,
                               ),
                             ),
-                        ],
-                      );
-                    },
-                  ),
-                ),
-              ],
+                            childCount: _recommendedVideos.length,
+                          ),
+                        ),
+                    ],
+                  );
+                },
+              ),
             ),
-          ),
-        );
-      },
+          ],
+        ),
+      ),
     );
   }
 }
@@ -198,8 +170,8 @@ class _VideoMeta extends StatelessWidget {
   Widget build(BuildContext context) {
     final hasViews = video.viewCount != '0';
     final subscriberLabel = channel != null
-        ? '${Formatters.compactCount(channel!.subscriberCount)} obunachi'
-        : (isLoading ? 'Yuklanmoqda...' : '');
+        ? '${Formatters.compactCount(channel!.subscriberCount)} ${AppStrings.subscriber}'
+        : (isLoading ? AppStrings.loading : '');
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -219,9 +191,8 @@ class _VideoMeta extends StatelessWidget {
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: Text(
-            [
-              if (hasViews)
-                '${Formatters.compactCount(video.viewCount)} ko\'rish',
+            [                if (hasViews)
+                '${Formatters.compactCount(video.viewCount)} ${AppStrings.views}',
               Formatters.timeAgo(video.publishedAt),
             ].join(' - '),
             style: const TextStyle(
@@ -297,7 +268,7 @@ class _VideoMeta extends StatelessWidget {
                   ),
                 ),
                 child: const Text(
-                  'Subscribe',
+                  AppStrings.subscribeButton,
                   style: TextStyle(fontWeight: FontWeight.w700),
                 ),
               ),
@@ -342,10 +313,10 @@ class _CommentsTile extends StatelessWidget {
               ),
               SizedBox(width: 12),
               Text(
-                'Izohlar',
+                AppStrings.commentsTitle,
                 style: TextStyle(
                   color: AppTheme.textPrimary,
-                  fontSize: 14,
+                  fontSize: AppDimensions.fontSizeBase,
                   fontWeight: FontWeight.w600,
                 ),
               ),
@@ -391,10 +362,10 @@ class _ActionPills extends StatelessWidget {
               ],
             ),
           ),
-          _pill(icon: Icons.share_outlined, label: 'Share'),
-          _pill(icon: Icons.graphic_eq_outlined, label: 'Remix'),
-          _pill(icon: Icons.download_outlined, label: 'Download'),
-          _pill(icon: Icons.cut_outlined, label: 'Clip'),
+          _pill(icon: Icons.share_outlined, label: AppStrings.shareLabel),
+          _pill(icon: Icons.graphic_eq_outlined, label: AppStrings.remixLabel),
+          _pill(icon: Icons.download_outlined, label: AppStrings.downloadLabel),
+          _pill(icon: Icons.cut_outlined, label: AppStrings.clipLabel),
         ],
       ),
     );
@@ -419,14 +390,13 @@ class _ActionPills extends StatelessWidget {
                 const SizedBox(width: 8),
                 Text(
                   label,
-                  style: const TextStyle(
-                    fontSize: 13,
+                  style: const TextStyle(                    fontSize: AppDimensions.fontSizeMd,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
               ],
             ],
           ),
-    );
+        );
   }
 }

@@ -2,6 +2,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
 
+import '../../../../core/constants/app_strings.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/utils/formatters.dart';
 import '../../../youtube/domain/entities/video.dart';
@@ -245,21 +246,21 @@ class _ActionRail extends StatelessWidget {
         const SizedBox(height: 16),
         _ActionButton(
           icon: disliked ? Icons.thumb_down : Icons.thumb_down_outlined,
-          label: 'Dislike',
+          label: AppStrings.dislikeLabel,
           color: disliked ? AppTheme.primaryColor : Colors.white,
           onTap: onDislike,
         ),
         const SizedBox(height: 16),
         _ActionButton(
           icon: Icons.comment_outlined,
-          label: 'Izoh',
+          label: AppStrings.shortsComment,
           color: Colors.white,
           onTap: onComment,
         ),
         const SizedBox(height: 16),
         _ActionButton(
           icon: Icons.share_outlined,
-          label: 'Share',
+          label: AppStrings.shareLabel,
           color: Colors.white,
           onTap: onShare,
         ),
@@ -348,7 +349,7 @@ class _ShortInfo extends StatelessWidget {
               const SizedBox(width: 10),
               Flexible(
                 child: Text(
-                  '@${video.channelTitle}',
+                  '${AppStrings.channelHandlePrefix}${video.channelTitle}',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
@@ -370,7 +371,7 @@ class _ShortInfo extends StatelessWidget {
                   borderRadius: BorderRadius.circular(16),
                 ),
                 child: const Text(
-                  'Subscribe',
+                  AppStrings.shortsSubscribe,
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 12,

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 import 'features/splash/presentation/pages/splash_page.dart';
 import 'features/youtube/presentation/bloc/youtube_bloc.dart';
 import 'core/navigation/route_observer.dart';
@@ -9,6 +10,8 @@ import 'injection_container.dart' as di;
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  await Hive.initFlutter();
 
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(

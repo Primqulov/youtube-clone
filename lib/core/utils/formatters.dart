@@ -1,23 +1,25 @@
+import '../constants/app_strings.dart';
+
 class Formatters {
   Formatters._();
 
   static String compactCount(String count) {
     final n = int.tryParse(count) ?? 0;
-    if (n >= 1000000000) return '${(n / 1000000000).toStringAsFixed(1)}B';
-    if (n >= 1000000) return '${(n / 1000000).toStringAsFixed(1)}M';
-    if (n >= 1000) return '${(n / 1000).toStringAsFixed(1)}K';
+    if (n >= 1000000000) return '${(n / 1000000000).toStringAsFixed(1)}${AppStrings.compactB}';
+    if (n >= 1000000) return '${(n / 1000000).toStringAsFixed(1)}${AppStrings.compactM}';
+    if (n >= 1000) return '${(n / 1000).toStringAsFixed(1)}${AppStrings.compactK}';
     return n.toString();
   }
 
   static String timeAgo(DateTime date) {
     final diff = DateTime.now().difference(date);
-    if (diff.inDays >= 365) return '${(diff.inDays / 365).floor()} yil oldin';
-    if (diff.inDays >= 30) return '${(diff.inDays / 30).floor()} oy oldin';
-    if (diff.inDays >= 7) return '${(diff.inDays / 7).floor()} hafta oldin';
-    if (diff.inDays > 0) return '${diff.inDays} kun oldin';
-    if (diff.inHours > 0) return '${diff.inHours} soat oldin';
-    if (diff.inMinutes > 0) return '${diff.inMinutes} daqiqa oldin';
-    return 'Hozirgina';
+    if (diff.inDays >= 365) return '${(diff.inDays / 365).floor()}${AppStrings.timeAgoYears}';
+    if (diff.inDays >= 30) return '${(diff.inDays / 30).floor()}${AppStrings.timeAgoMonths}';
+    if (diff.inDays >= 7) return '${(diff.inDays / 7).floor()}${AppStrings.timeAgoWeeks}';
+    if (diff.inDays > 0) return '${diff.inDays}${AppStrings.timeAgoDays}';
+    if (diff.inHours > 0) return '${diff.inHours}${AppStrings.timeAgoHours}';
+    if (diff.inMinutes > 0) return '${diff.inMinutes}${AppStrings.timeAgoMinutes}';
+    return AppStrings.timeAgoJustNow;
   }
 
   static final RegExp _isoDurationRegex = RegExp(

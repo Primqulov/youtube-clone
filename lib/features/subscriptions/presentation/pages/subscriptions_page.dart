@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../../../core/constants/app_dimensions.dart';
+import '../../../../core/constants/app_strings.dart';
 import '../../../../core/theme/app_theme.dart';
 
 class SubscriptionsPage extends StatelessWidget {
@@ -21,18 +23,18 @@ class SubscriptionsPage extends StatelessWidget {
               ),
               SizedBox(height: 20),
               Text(
-                'Obunalar',
+                AppStrings.subscriptionsTitle,
                 style: TextStyle(
                   color: AppTheme.textPrimary,
-                  fontSize: 22,
+                  fontSize: AppDimensions.fontSizeHeadingLg,
                   fontWeight: FontWeight.w700,
                 ),
               ),
-              SizedBox(height: 8),
+              SizedBox(height: AppDimensions.paddingSm),
               Padding(
-                padding: EdgeInsets.symmetric(horizontal: 32),
+                padding: EdgeInsets.symmetric(horizontal: AppDimensions.paddingXxl),
                 child: Text(
-                  'Tez orada — siz obuna bo\'lgan kanallar shu yerda ko\'rinadi',
+                  AppStrings.subscriptionsSubtitle,
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     color: AppTheme.textSecondary,

@@ -1,7 +1,7 @@
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
+import '../../../../core/constants/app_strings.dart';
 import '../../../../core/theme/app_theme.dart';
 
 class ChannelAvatar extends StatelessWidget {
@@ -19,9 +19,6 @@ class ChannelAvatar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (avatarUrl.isNotEmpty) {
-      if (kDebugMode) {
-        print("hello");
-      }
       return ClipOval(
         child: CachedNetworkImage(
           imageUrl: avatarUrl,
@@ -46,7 +43,7 @@ class _Fallback extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final initial = title.isNotEmpty ? title[0].toUpperCase() : '?';
+    final initial = title.isNotEmpty ? title[0].toUpperCase() : AppStrings.fallbackAvatarChar;
     return Container(
       width: size,
       height: size,

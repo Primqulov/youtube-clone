@@ -2,10 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../app/main_shell.dart';
+import '../../../../core/constants/app_dimensions.dart';
+import '../../../../core/constants/app_strings.dart';
 import '../../../../core/navigation/route_observer.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../injection_container.dart' as di;
 import '../../../youtube/domain/entities/video.dart';
+import '../../../youtube/presentation/bloc/youtube_bloc.dart';
+import '../../../youtube/presentation/pages/search_page.dart';
 import '../bloc/shorts_cubit.dart';
 import '../bloc/shorts_player_pool.dart';
 import '../widgets/short_player_item.dart';
@@ -46,7 +50,7 @@ class _ShortsView extends StatelessWidget {
           }
           if (state.videos.isEmpty) {
             return _ErrorView(
-              message: 'Shorts topilmadi',
+              message: AppStrings.shortsNotFound,
               onRetry: () => context.read<ShortsCubit>().load(),
             );
           }
@@ -81,22 +85,7 @@ class _ShortsFeedState extends State<_ShortsFeed> with RouteAware {
         if (mounted) setState(() {});
       },
     );
-    _pageController.addListener(_onPageScroll);
     WidgetsBinding.instance.addPostFrameCallback((_) => _syncWindow());
-  }
-
-  void _onPageScroll() {
-    if (!_pageController.hasClients) return;
-    final p = _pageController.page;
-    if (p == null) return;
-    final candidate = p.round();
-    if (candidate == _currentIndex) return;
-    if (candidate < 0 || candidate >= widget.videos.length) return;
-    setState(() => _currentIndex = candidate);
-    _syncWindow();
-    if (candidate >= widget.videos.length - _prefetchThreshold) {
-      context.read<ShortsCubit>().loadMore();
-    }
   }
 
   @override
@@ -141,9 +130,7 @@ class _ShortsFeedState extends State<_ShortsFeed> with RouteAware {
   void dispose() {
     appRouteObserver.unsubscribe(this);
     _pool.dispose();
-    _pageController
-      ..removeListener(_onPageScroll)
-      ..dispose();
+    _pageController.dispose();
     super.dispose();
   }
 
@@ -204,15 +191,19 @@ class _ShortsFeedState extends State<_ShortsFeed> with RouteAware {
               child: Row(
                 children: [
                   IconButton(
-                    onPressed: () => Navigator.pop(context),
+                    onPressed: () {
+                      // Shorts IndexedStack ichida — back o'rniga home tabga o'tamiz
+                      final scope = context.findAncestorWidgetOfExactType<MainShellScope>();
+                      scope?.notifier?.value = MainShellScope.homeTabIndex;
+                    },
                     icon: const Icon(Icons.arrow_back, color: Colors.white),
                   ),
                   const Spacer(),
                   const Text(
-                    'Shorts',
+                    AppStrings.shortsTitle,
                     style: TextStyle(
                       color: Colors.white,
-                      fontSize: 18,
+                      fontSize: AppDimensions.fontSizeXxl,
                       fontWeight: FontWeight.w700,
                       shadows: [
                         Shadow(blurRadius: 4, color: Colors.black54),
@@ -221,7 +212,16 @@ class _ShortsFeedState extends State<_ShortsFeed> with RouteAware {
                   ),
                   const Spacer(),
                   IconButton(
-                    onPressed: () {},
+                    onPressed: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => BlocProvider(
+                            create: (_) => di.sl<YoutubeBloc>(),
+                            child: const SearchPage(),
+                          ),
+                        ),
+                      );
+                    },
                     icon: const Icon(Icons.search, color: Colors.white),
                   ),
                 ],
@@ -265,7 +265,7 @@ class _ErrorView extends StatelessWidget {
                 backgroundColor: AppTheme.primaryColor,
                 foregroundColor: Colors.white,
               ),
-              child: const Text('Qayta urinish'),
+              child: const Text(AppStrings.retryButton),
             ),
           ],
         ),

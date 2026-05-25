@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../core/constants/app_dimensions.dart';
+import '../core/constants/app_strings.dart';
 import '../core/theme/app_theme.dart';
 import '../features/library/presentation/pages/library_page.dart';
 import '../features/shorts/presentation/pages/shorts_page.dart';
@@ -85,30 +87,30 @@ class _MainShellState extends State<MainShell> {
         backgroundColor: AppTheme.surfaceDark,
         selectedItemColor: AppTheme.textPrimary,
         unselectedItemColor: AppTheme.textSecondary,
-        selectedFontSize: 11,
-        unselectedFontSize: 11,
+        selectedFontSize: AppDimensions.bottomNavFontSize,
+        unselectedFontSize: AppDimensions.bottomNavFontSize,
         showUnselectedLabels: true,
         elevation: 0,
         items: const [
           BottomNavigationBarItem(
             icon: Icon(Icons.home_outlined),
             activeIcon: Icon(Icons.home),
-            label: 'Asosiy',
+            label: AppStrings.navHome,
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.play_circle_outline),
             activeIcon: Icon(Icons.play_circle_fill),
-            label: 'Shorts',
+            label: AppStrings.navShorts,
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.subscriptions_outlined),
             activeIcon: Icon(Icons.subscriptions),
-            label: 'Obunalar',
+            label: AppStrings.navSubscriptions,
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.video_library_outlined),
             activeIcon: Icon(Icons.video_library),
-            label: 'Kutubxona',
+            label: AppStrings.navLibrary,
           ),
         ],
       ),
